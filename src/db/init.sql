@@ -12,9 +12,19 @@ CREATE TABLE IF NOT EXISTS job_status_logs (
     'reprocessando',
     'cancelado'
   )),
-  message TEXT,
   payload JSONB,
   error_details TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+
+CREATE TABLE IF NOT EXISTS telemetria_sensores (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  idDispositivo INT NOT NULL,
+  horaColeta TIMESTAMPTZ NOT NULL,
+  tipoSensor TEXT NOT NULL,
+  naturezaLeitura TEXT NOT NULL,
+  valorColetado TEXT NULL,
+  jobId UUID REFERENCES job_status_logs(id) ON DELETE SET NULL
 );
