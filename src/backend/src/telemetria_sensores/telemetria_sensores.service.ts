@@ -3,13 +3,17 @@ import { CreateTelemetriaSensoreDto } from './dto/create-telemetria_sensore.dto'
 import { DatabaseService } from 'src/database/database.service';
 import { randomUUID } from 'crypto';
 import { QueueTelemetriaSensoreDto } from './dto/queue-telemetria_sensore.dt';
+import { RabbitmqService } from 'src/rabbitmq/rabbitmq.service';
 
 @Injectable()
 export class TelemetriaSensoresService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService, 
+    private readonly rabbitmqService: RabbitmqService
+  ) {}
 
   async create(createTelemetriaSensoreDto: CreateTelemetriaSensoreDto) {
-
+    try {
     // gerar jobId
     const jobId = randomUUID();
     
@@ -35,14 +39,27 @@ export class TelemetriaSensoresService {
       [jobId, 'jobs', 'em_fila', payload],
     );
 
-    // publicar a msg no rabbit
-
-    // se falhar o envio logar isso
-
-    // se não enviar 202
-
-
+    const fila = await this.rabbitmqService.publish('telemetria_sensores', payload);
     
-    return log;
+    // se falhar o envio logar isso
+    if(!fila) {
+      await this.db.query(
+        `
+        UPDATE job_status_logs
+        SET status = $1, updated_at = NOW()
+        WHERE job_id = $2
+        `,
+        ['falha_envio', jobId],
+      );
+    }
+
+    return {
+      mensagem: 'Telemetria sensore recebida e processada',
+      jobId,
+    };
+    } catch (error) {
+      console.error('Erro ao criar telemetria sensore:', error);
+      throw new Error('Erro ao criar telemetria sensore');
+    }
   }
 }

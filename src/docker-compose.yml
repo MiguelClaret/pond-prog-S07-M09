@@ -50,7 +50,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      PORT: 3000
+      PORT: 3004
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: pond_murilo
@@ -59,7 +59,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pond_murilo
       RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672/
     ports:
-      - "3000:3000"
+      - "3004:3004"
 
   worker:
     build:
