@@ -5,9 +5,11 @@
 &emsp;O backend foi desenvolvido em NestJS. Essa escolha foi alinhada com o professor em sala de aula.
 
 **Objetivo**
+
 &emsp;Receber leituras de sensores por HTTP, registrar a entrada da mensagem, enviar o payload para uma fila, consumir essa fila em um worker separado e gravar o resultado no banco de dados.
 
 **Arquitetura**
+
 1. O dispositivo envia uma requisição `POST` para o backend.
 2. O backend recebe os dados, gera `horaColeta` e `jobId`, registra a entrada em `job_status_logs` com status `em_fila` e publica a mensagem no RabbitMQ.
 3. O worker fica escutando a fila `telemetria_sensores`.
@@ -17,6 +19,7 @@
 7. Se houver erro, o sistema registra a situação em `error_details` e atualiza o status do job.
 
 **Tecnologias**
+
 1. NestJS no backend e no worker
 2. RabbitMQ para mensageria
 3. PostgreSQL para persistência
@@ -24,6 +27,7 @@
 5. k6 para teste de carga
 
 **Estrutura do projeto**
+
 1. `src/backend` contém a API HTTP
 2. `src/worker` contém o consumidor da fila
 3. `src/db` contém a inicialização do banco
@@ -32,6 +36,7 @@
 6. `src/docker-compose.yml` orquestra os serviços
 
 **Como executar**
+
 1. Na raiz do projeto, execute:
 
 ```bash
@@ -48,6 +53,7 @@ docker compose -f src/docker-compose.yml up --build
 4. PostgreSQL em `localhost:5432`
 
 **Credenciais do ambiente**
+
 1. RabbitMQ
 
 ```txt
@@ -64,6 +70,7 @@ banco: pond_murilo
 ```
 
 **Endpoint principal**
+
 &emsp;Rota:
 
 ```txt
@@ -91,6 +98,7 @@ POST /telemetria-sensores
 ```
 
 **Tabelas principais**
+
 1. `job_status_logs`
 &emsp;Registra o ciclo de vida do job, incluindo status, payload e detalhes de erro.
 
@@ -98,6 +106,7 @@ POST /telemetria-sensores
 &emsp;Armazena a telemetria já processada pelo worker.
 
 **Fluxo de status**
+
 1. `em_fila`
 2. `processando`
 3. `concluido`
@@ -105,12 +114,15 @@ POST /telemetria-sensores
 5. `reprocessando`
 6. `cancelado`
 
+
 **Tratamento de erro**
+
 1. Se a publicação na fila falhar, o backend atualiza o job para `falhou` e registra uma mensagem em `error_details`.
 2. Se o worker receber um payload inválido e conseguir identificar o `jobId`, ele atualiza o job para `falhou` e registra o motivo em `error_details`.
 3. Se o processamento falhar, o worker atualiza o job para `reprocessando` e grava a mensagem de erro em `error_details`.
 
 **Teste de carga com k6**
+
 &emsp;O script de carga está em:
 
 ```txt
@@ -143,7 +155,9 @@ k6 run src/loadtest/telemetria-k6.js --summary-export=src/loadtest/resultado-k6.
 src/loadtest/resultado-k6.json
 ```
 
+
 **Relatório do teste executado**
+
 1. Total de requisições HTTP: `5776`
 2. Taxa média de requisições: `45.65 req/s`
 3. Total de iterações: `5776`
@@ -159,6 +173,7 @@ src/loadtest/resultado-k6.json
 13. Check `retornou jobId`: `5776 acertos e 0 falhas`
 
 **Análise do teste**
+
 &emsp;Pelo lado funcional, o sistema se comportou de forma consistente. As `5776` requisições avaliadas retornaram `202` e todas trouxeram `jobId`. Isso mostra que, durante o teste, o backend continuou aceitando as mensagens e o fluxo de geração de identificador e envio para fila permaneceu ativo mesmo com aumento de concorrência.
 
 &emsp;Pelo lado de desempenho, o resultado indica um gargalo claro. O tempo médio de resposta ficou em `5160.91 ms`, a mediana ficou em `5469.61 ms` e o percentil 95 chegou a `8699.80 ms`. Como o threshold definido no teste era `p(95) < 3000 ms`, o sistema não atendeu a meta de latência. Em outras palavras, o endpoint continuou funcionando, mas a resposta ficou lenta quando a carga subiu.
@@ -183,6 +198,7 @@ src/loadtest/resultado-k6.json
 
 
 **Testes unitários**
+
 &emsp;Para rodar os testes unitários do sistema:
 
 ```bash
@@ -198,6 +214,7 @@ npm test -- --runInBand
 ```
 
 **Conclusão**
+
 &emsp;Com esta implementação, a proposta principal da pondera foi atendida: o sistema recebe a telemetria por HTTP, registra o job, envia a mensagem para o RabbitMQ, consome de forma assíncrona no worker e persiste os dados no PostgreSQL. A separação entre backend e worker ajudou a organizar melhor o fluxo e deixou o processamento desacoplado do recebimento da requisição.
 
 &emsp;Ao mesmo tempo, o teste de carga mostrou que funcionamento correto e bom desempenho não são exatamente a mesma coisa. Durante o experimento, a aplicação continuou respondendo com o formato esperado, mas a latência aumentou bastante quando a concorrência cresceu. Isso indica que a arquitetura escolhida resolve a parte de desacoplamento, mas ainda precisa de ajustes para responder melhor em cenários de maior pressão.
