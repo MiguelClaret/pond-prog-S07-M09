@@ -1,6 +1,5 @@
 import {
   Injectable,
-  Logger,
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
@@ -14,7 +13,6 @@ import {
 
 @Injectable()
 export class RabbitmqService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(RabbitmqService.name);
   private readonly url =
     process.env.RABBITMQ_URL ?? 'amqp://admin:admin@localhost:5672/';
 
@@ -60,10 +58,6 @@ export class RabbitmqService implements OnModuleInit, OnModuleDestroy {
       ...options,
     });
 
-    if (!sent) {
-      this.logger.warn(`RabbitMQ sinalizou backpressure ao publicar na fila ${queueName}`);
-    }
-
     return sent;
   }
 
@@ -75,17 +69,12 @@ export class RabbitmqService implements OnModuleInit, OnModuleDestroy {
     this.connection = await connect(this.url);
     this.channel = await this.connection.createChannel();
 
-    this.connection.on('error', (error) => {
-      this.logger.error('Erro na conexao com o RabbitMQ', error.stack);
-    });
+    this.connection.on('error', () => {});
 
     this.connection.on('close', () => {
-      this.logger.warn('Conexao com RabbitMQ encerrada');
       this.connection = null;
       this.channel = null;
     });
-
-    this.logger.log(`Conexao com RabbitMQ estabelecida em ${this.url}`);
   }
 
   private async getChannel(): Promise<Channel> {

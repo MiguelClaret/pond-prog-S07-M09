@@ -24,10 +24,10 @@ export class TelemetriaSensoresService {
     };
 
 
-    const log = await this.db.query(
+    await this.db.query(
       `
       INSERT INTO job_status_logs (
-        job_id,
+        id,
         queue_name,
         status,
         payload,
@@ -36,7 +36,7 @@ export class TelemetriaSensoresService {
       )
       VALUES ($1, $2, $3, $4, NOW(), NOW())
       `,
-      [jobId, 'jobs', 'em_fila', payload],
+      [jobId, 'telemetria_sensores', 'em_fila', payload],
     );
 
     const fila = await this.rabbitmqService.publish('telemetria_sensores', payload);
@@ -46,20 +46,24 @@ export class TelemetriaSensoresService {
       await this.db.query(
         `
         UPDATE job_status_logs
-        SET status = $1, updated_at = NOW()
-        WHERE job_id = $2
+        SET status = $1, error_details = $2, updated_at = NOW()
+        WHERE id = $3
         `,
-        ['falha_envio', jobId],
+        [
+          'falhou',
+          'Falha ao enviar mensagem para a fila telemetria_sensores',
+          jobId,
+        ],
       );
     }
 
     return {
-      mensagem: 'Telemetria sensore recebida e processada',
+      mensagem: 'Telemetria do sensor recebida em fila para processamento',
       jobId,
     };
     } catch (error) {
-      console.error('Erro ao criar telemetria sensore:', error);
-      throw new Error('Erro ao criar telemetria sensore');
+      console.error('Erro ao criar telemetria do sensor:', error);
+      throw new Error('Erro ao criar telemetria do sensor');
     }
   }
 }

@@ -1,9 +1,8 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(DatabaseService.name);
   private readonly pool: Pool;
 
   constructor() {
@@ -18,14 +17,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS ?? 5000),
     });
 
-    this.pool.on('error', (error: Error) => {
-      this.logger.error('Erro inesperado no pool do PostgreSQL', error.stack);
-    });
+    this.pool.on('error', () => {});
   }
 
   async onModuleInit() {
     await this.pool.query('SELECT 1');
-    this.logger.log('Conexao com PostgreSQL estabelecida');
   }
 
   async onModuleDestroy() {
